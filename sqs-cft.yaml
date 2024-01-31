@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  MyQueue:
+     Default: "MySqsQueue"
+     Description: "SQS queue"
+     Type: "String" 
+  MyDeadQueue:
+      Default: "MyDeadLetterQueue"
+      Description: "DLQ queue"
+      Type: "String"
+Resources: 
+  MySourceQueue: 
+    Type: AWS::SQS::Queue
+    Properties: 
+      QueueName: !Ref MyQueue
+      RedrivePolicy: 
+        deadLetterTargetArn: 
+          Fn::GetAtt: 
+            - "MyDeadLetterQueue"
+            - "Arn"
+        maxReceiveCount: 5
+  MyDeadLetterQueue: 
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref MyDeadQueue
+Outputs: 
+  SourceQueueURL: 
+    Description: "URL of source queue"
+    Value: 
+      Ref: "MySourceQueue"
+  SourceQueueARN: 
+    Description: "ARN of source queue"
+    Value: 
+      Fn::GetAtt: 
+        - "MySourceQueue"
+        - "Arn"
+  DeadLetterQueueURL: 
+    Description: "URL of dead-letter queue"
+    Value: 
+      Ref: "MyDeadLetterQueue"
+  DeadLetterQueueARN: 
+    Description: "ARN of dead-letter queue"
+    Value: 
+      Fn::GetAtt: 
+        - "MyDeadLetterQueue"
+        - "Arn"

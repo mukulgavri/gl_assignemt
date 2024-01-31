@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  Subnet1Id:
+    Type: String
+    Description: "ID of the first subnet for the Auto Scaling group"
+  Subnet2Id:
+    Type: String
+    Description: "ID of the second subnet for the Auto Scaling group"
+  AmiId:
+    Type: String
+    Description: "ID of the EC2 AMI for the launch configuration"
+  InstanceType:
+    Type: String
+    Description: "Type of EC2 instance for the launch configuration"
+  SecurityGroupId:
+    Type: String
+    Description: "ID of the security group for the launch configuration"
+
+Resources:
+  MyAutoScalingGroup:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      DesiredCapacity: 2
+      MinSize: 2
+      MaxSize: 5
+      LaunchConfigurationName:
+        Ref: "MyLaunchConfig"
+      VPCZoneIdentifier:
+        - !Ref Subnet1Id
+        - !Ref Subnet2Id
+
+  MyLaunchConfig:
+    Type: "AWS::AutoScaling::LaunchConfiguration"
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Install and configure CloudWatch agent
+          yum install -y amazon-cloudwatch-agent
+          
+          # Configure CloudWatch agent
+          cat <<EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+          {
+            "metrics": {
+              "append_dimensions": {
+                "InstanceId": "\${aws:InstanceId}"
+              },
+              "metrics_collected": {
+                "mem": {
+                  "measurement": [
+                    "mem_used_percent"
+                  ]
+                }
+              }
+            }
+          }
+          EOF
+          
+          # Start and enable CloudWatch agent
+          systemctl start amazon-cloudwatch-agent
+          systemctl enable amazon-cloudwatch-agent
+
+      SecurityGroups:
+        - !Ref SecurityGroupId
+
+  MyMemoryAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmDescription: "Scale up when memory utilization is high"
+      Namespace: "CWAgent"
+      MetricName: "mem_used_percent"
+      Dimensions:
+        - Name: "InstanceId"
+          Value: !Ref "MyAutoScalingGroup"
+      ComparisonOperator: "GreaterThanThreshold"
+      EvaluationPeriods: 2
+      Period: 300
+      Statistic: "Average"
+      Threshold: 80  # Adjust the threshold as needed
+      AlarmActions:
+        - Ref: "MyScaleUpPolicy"
+
+  MyScaleUpPolicy:
+    Type: "AWS::AutoScaling::ScalingPolicy"
+    Properties:
+      AdjustmentType: "ChangeInCapacity"
+      AutoScalingGroupName:
+        Ref: "MyAutoScalingGroup"
+      Cooldown: 300
+      ScalingAdjustment: 1

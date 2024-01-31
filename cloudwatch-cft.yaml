@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Linux CloudWatch Alarms - CPU Memory Instance and System Status
+Parameters:
+  instanceid:
+    Description: "Choose an instance id"
+    Type: AWS::EC2::Instance::Id
+
+  instancename:
+    Description: "Please provide EC2 instance name"
+    Type: "String"
+    MinLength: '1'
+    MaxLength: '50'
+
+  warningsnsarn:
+    Description: "Please provide an ARN of SNS topic"
+    Type: "String"
+
+Resources:
+  CPUAlarmWARNING: 
+    Type: AWS::CloudWatch::Alarm
+    DeletionPolicy: Retain
+    Properties:
+      AlarmDescription: !Sub "${instancename} - ${instanceid} - High CPU Usage 90%"
+      AlarmActions:
+      - !Ref warningsnsarn
+      OKActions:
+      - !Ref warningsnsarn
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: '900'
+      EvaluationPeriods: '1'
+      Threshold: '90'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref instanceid
+
+  MemoryAlarmWARNING:
+    Type: AWS::CloudWatch::Alarm
+    DeletionPolicy: Retain
+    Properties:
+      AlarmDescription: !Sub "${instancename} - ${instanceid} - High Memory Usage 90%"
+      AlarmActions:
+      - !Ref warningsnsarn
+      OKActions:
+      - !Ref warningsnsarn
+      MetricName: "mem_used_percent"
+      Namespace: CWAgent
+      Statistic: Average
+      Period: '900'
+      EvaluationPeriods: '1'
+      Threshold: '90'
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref instanceid
+  

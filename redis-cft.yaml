@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Create a Redis cache with specified node type
+Parameters:
+  NodeType:
+    Description: "Type of node"
+    Type: String
+    Default: "cache.t2.micro"
+  SecurityGroupId:
+    Description: "ID of the VPC security group"
+    Type: String 
+Resources:
+  RedisCluster:
+    Type: 'AWS::ElastiCache::CacheCluster'
+    Properties:
+      CacheNodeType: !Ref NodeType
+      Engine: redis
+      NumCacheNodes: '1'
+      VpcSecurityGroupIds: 
+        - !Ref SecurityGroupId

@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: Service
+metadata:
+  name: gl-demo-service
+spec:
+  selector:
+    app: hello-world
+  ports:
+  - port: 80
+    targetPort: 80

@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  EC2InstanceType:
+    Type: String
+    Description: "Type of EC2 instance"
+    Default: "t2.micro"
+  EC2ImageId:
+    Type: AWS::EC2::Image::Id
+    Description: "AMI ID for the EC2 instance"
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: "EC2 Key Pair name"
+  HTTPIngressPort:
+    Type: Number
+    Description: "HTTP ingress port"
+    Default: 80
+
+Resources:
+  MyEC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !Ref EC2ImageId
+      InstanceType: !Ref EC2InstanceType
+      KeyName: !Ref KeyPairName
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y aws-cfn-bootstrap
+
+          /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource MyEC2Instance --configsets InstallAndRun --region ${AWS::Region}
+
+      Metadata:
+        AWS::CloudFormation::Init:
+          configSets:
+            InstallAndRun:
+              - "install"
+              - "run"
+
+          install:
+            packages:
+              yum:
+                httpd: []
+
+          run:
+            commands:
+              01_start_apache:
+                command: "service httpd start"
+                ignoreErrors: "true"
+
+  MyEC2InstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Enable SSH and HTTP access"
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+        - CidrIp: "0.0.0.0/0"
+          IpProtocol: "tcp"
+          FromPort: !Ref HTTPIngressPort
+          ToPort: !Ref HTTPIngressPort
+
+  MyEC2InstanceSecurityGroupIngress:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      GroupId: !GetAtt "MyEC2InstanceSecurityGroup.GroupId"
+      IpProtocol: "tcp"
+      FromPort: !Ref HTTPIngressPort
+      ToPort: !Ref HTTPIngressPort
+      CidrIp: "0.0.0.0/0"
