@@ -1,0 +1,10 @@
+replicaCount: 1
+image:
+  repository: 206809158604.dkr.ecr.us-east-1.amazonaws.com/hello-world
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  name: hello-world
+  type: ClusterIP
+  port: 80
